@@ -848,6 +848,42 @@ const config = {
    */
   webAuthDomain: process.env.WEB_AUTH_DOMAIN ?? '',
 
+  /**
+   * Per-dependency readiness criticality configuration (#1317).
+   * Only failures in critical dependencies cause the /ready endpoint to return 503.
+   * Non-critical failures show as degraded in the response body and metrics
+   * while keeping HTTP 200.
+   *
+   * READINESS_CRITICAL — Comma-separated list of critical dependencies.
+   * Valid dependency names: db, ipfs, stellar, indexer
+   * Default: 'db,stellar' (core dependencies that make reads fail)
+   *
+   * When a dependency fails:
+   * - Critical: /ready returns 503 (pod removed from Service)
+   * - Non-critical: /ready returns 200 with degraded status (pod stays in Service)
+   *
+   * Example:
+   *   READINESS_CRITICAL=db,stellar         # Only db and stellar are critical
+   *   READINESS_CRITICAL=db,stellar,indexer # Include indexer as critical
+   *   READINESS_CRITICAL=db                 # Only db is critical
+   */
+  readinessCriticalDependencies: (() => {
+    const raw = process.env.READINESS_CRITICAL ?? 'db,stellar';
+    const deps = raw.split(',').map((d) => d.trim().toLowerCase()).filter((d) => d);
+    const valid = new Set(['db', 'ipfs', 'stellar', 'indexer']);
+    
+    for (const dep of deps) {
+      if (!valid.has(dep)) {
+        throw new Error(
+          `Invalid READINESS_CRITICAL value: "${dep}" is not a valid dependency. ` +
+          `Valid dependencies are: ${Array.from(valid).join(', ')}.`,
+        );
+      }
+    }
+    
+    return new Set(deps);
+  })(),
+
 };
 
 export default config;

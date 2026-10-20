@@ -375,8 +375,17 @@ app.get('/ready', async (_req, res) => {
     return;
   }
   const services = await checkReadiness();
-  const allOk = Object.values(services).every(v => v.status === 'ok' || v.status === 'disabled');
-  if (allOk) {
+  
+  // Determine if pod should be ready based on critical dependencies only
+  const criticalDeps = config.readinessCriticalDependencies;
+  const allCriticalOk = Array.from(criticalDeps).every(
+    (dep) => {
+      const probe = services[dep];
+      return !probe || probe.status === 'ok' || probe.status === 'disabled';
+    },
+  );
+  
+  if (allCriticalOk) {
     res.json({ status: 'ok', services });
   } else {
     res.status(503).json({ status: 'degraded', services });
@@ -394,8 +403,17 @@ app.get('/health/readiness', createTimeout(5_000), async (_req, res) => {
     return;
   }
   const services = await checkReadiness();
-  const allOk = Object.values(services).every(v => v.status === 'ok' || v.status === 'disabled');
-  if (allOk) {
+  
+  // Determine if pod should be ready based on critical dependencies only
+  const criticalDeps = config.readinessCriticalDependencies;
+  const allCriticalOk = Array.from(criticalDeps).every(
+    (dep) => {
+      const probe = services[dep];
+      return !probe || probe.status === 'ok' || probe.status === 'disabled';
+    },
+  );
+  
+  if (allCriticalOk) {
     res.json({ status: 'ok', services });
   } else {
     res.status(503).json({ status: 'degraded', services });
